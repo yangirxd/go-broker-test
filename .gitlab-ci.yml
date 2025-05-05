@@ -1,18 +1,14 @@
+image: golang:1.24-alpine
+
+before_script:
+  - apk add --no-cache gcc musl-dev
+  - go mod download
+
 stages:
-  - vet
   - test
-
-variables:
-  CGO_ENABLED: "1"
-
-vet:
-  stage: vet
-  image: golang:1.24-alpine
-  script:
-    - go vet ./...
 
 test:
   stage: test
-  image: golang:1.24-alpine
   script:
-    - go test -race -cover ./...
+    - go vet ./...
+    - go test -race -covermode=atomic ./...
