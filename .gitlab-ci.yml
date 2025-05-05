@@ -1,0 +1,18 @@
+stages:
+  - vet
+  - test
+
+variables:
+  CGO_ENABLED: "1"
+
+vet:
+  stage: vet
+  image: golang:1.24-alpine
+  script:
+    - go vet ./...
+
+test:
+  stage: test
+  image: golang:1.24-alpine
+  script:
+    - go test -race -cover ./...
