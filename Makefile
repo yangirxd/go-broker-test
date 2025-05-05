@@ -13,7 +13,7 @@ run-worker:
 	go run ./cmd/worker
 
 docker-up:
-	docker-compose up --build --detach
+	docker-compose up --build --detach --wait
 
 docker-down:
 	docker-compose down

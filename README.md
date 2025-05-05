@@ -84,7 +84,7 @@ curl http://localhost:8080/stats/123
 
 | Requirement                        | Minimum / Bonus           |
 | -                                  | -                         |
-| Go 1.22+, only stdlib + light libs | sqlx / chi / validator OK |
+| Go 1.24+, only stdlib + light libs | sqlx / chi / validator OK |
 | `go vet` and `go test -race` pass  | required                  |
 | Test coverage                      | ≥ 60%                     |
 | Dockerfile + docker-compose.yml    | bonus (+1)                |
