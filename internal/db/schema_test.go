@@ -8,10 +8,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func contains(s, substr string) bool {
-	return strings.Contains(s, substr)
-}
-
 func containsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
