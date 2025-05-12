@@ -1,100 +1,118 @@
-# Technical Assignment
+# Go Broker Test
 
-The candidate is asked to build a small project consisting of two Go processes:
+This project is a Go-based application for managing trades and account statistics. It includes a server and worker component, along with a SQLite database for data storage.
 
-- The **API server** accepts trade submissions via POST `/trades` and writes them to a queue table.
-- The **worker process** continuously reads new trades, validates them, stores them, and instantly updates the account's profit.
+## Features
+- **Trades Management**: Add and process trades.
+- **Account Statistics**: Fetch account statistics.
+- **Health Check**: Verify server health.
 
-Your code must compile, pass `go vet` and `go test -race`, and run via `docker-compose up`.
+## Prerequisites
+- Go 1.18 or later
+- SQLite
 
-## Purpose of This Task
+## Setup
 
-We want to assess your ability to write clean HTTP code, work with SQL, and reason about concurrency.
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd go-broker-test
+   ```
 
-## What You Should Build
+2. Install dependencies:
+   ```bash
+   go mod tidy
+   ```
 
-### Components and Architecture
+3. Run the server:
+   ```bash
+   go run cmd/server/main.go
+   ```
 
-```text
-┌──────────────┐ POST /trades       ┌───────────────┐
-│  API Server  │ ─────────────────► │  Queue Table  │
-│  cmd/server  │                    └───────────────┘
-└──────────────┘                         ▲
-                                         │ SELECT … FOR UPDATE
-┌──────────────┐            UPDATE stats │
-│  Worker      │ ◄───────────────────────┘
-│  cmd/worker  │
-└──────────────┘
+4. Run the worker:
+   ```bash
+   go run cmd/worker/main.go
+   ```
+
+## API Endpoints
+
+### 1. Add Trade
+**POST** `/trades`
+
+**Request Body:**
+```json
+{
+  "account": "ACC1",
+  "symbol": "EURUSD",
+  "volume": 1.5,
+  "open": 1.2345,
+  "close": 1.2350,
+  "side": "buy"
+}
 ```
 
-- **API (HTTP)** — exposes one POST endpoint and one GET endpoint.
-- **Queue** — an SQLite table `trades_q` used by the API to enqueue trades, and by the worker to mark them as processed.
-- **Worker** — a separate process that polls the queue every 100ms, calculates `profit`, and updates `account_stats`.
+**Response:**
+- `204 No Content` on success
+- `400 Bad Request` for invalid input
+- `500 Internal Server Error` for database errors
 
-### Trade Input Format
+### 2. Fetch Account Statistics
+**GET** `/stats/{account}`
 
-| Field     | Type    | Validation Rule            |
-| -         | -       | -                          |
-| `account` | string  | must not be empty          |
-| `symbol`  | string  | `^[A-Z]{6}$` (e.g. EURUSD) |
-| `volume`  | float64 | must be > 0                |
-| `open`    | float64 | must be > 0                |
-| `close`   | float64 | must be > 0                |
-| `side`    | string  | either "buy" or "sell"     |
-
-Profit calculation (performed by the worker):
-
-```go
-lot := 100000.0
-profit := (close - open) * volume * lot
-if side == "sell" { profit = -profit }
+**Response:**
+```json
+{
+  "account": "ACC1",
+  "trades": 5,
+  "profit": 1000.50
+}
 ```
 
-### HTTP Contracts
+**Error Response:**
+- `400 Bad Request` if account is missing
+- `500 Internal Server Error` for database errors
 
-| Method | URL            | Request / Response                               | Expected Behavior                                     |
-| -      | -              | -                                                | -                                                     |
-| POST   | `/trades`      | JSON trade payload                               | Enqueue trade; respond with 200 OK or 400 on errors   |
-| GET    | `/stats/{acc}` | `{"account":"123","trades":37,"profit":1234.56}` | Return current statistics for the given account       |
-| GET    | `/healthz`     | plain text OK                                    | Health check endpoint (for Kubernetes liveness probe) |
+### 3. Health Check
+**GET** `/healthz`
 
-### How to Run
+**Response:**
+- `200 OK` if the server is healthy
+- `500 Internal Server Error` if the database connection fails
 
-```shell
-# Terminal 1
-go run ./cmd/server.go --db data.db --listen 8080
+## Testing
 
-# Terminal 2
-go run ./cmd/worker.go --db data.db --poll 100ms
+Run all tests:
+```bash
+make test
 ```
 
-Sample request:
-
+Generate a coverage report:
+```bash
+make coverage
 ```
+
+## Example cURL Requests
+
+### Add a Trade
+```bash
 curl -X POST http://localhost:8080/trades \
-     -H 'Content-Type: application/json' \
-     -d '{"account":"123","symbol":"EURUSD","volume":1.0,
-          "open":1.1000,"close":1.1050,"side":"buy"}'
-
-curl http://localhost:8080/stats/123
-# {"account":"123","trades":1,"profit":500.0}
+-H "Content-Type: application/json" \
+-d '{
+  "account": "ACC1",
+  "symbol": "EURUSD",
+  "volume": 1.5,
+  "open": 1.2345,
+  "close": 1.2350,
+  "side": "buy"
+}'
 ```
 
-## What We Expect from Your Code
+### Fetch Account Statistics
+```bash
+curl -X GET http://localhost:8080/stats/ACC1
+```
 
-| Requirement                        | Minimum / Bonus           |
-| -                                  | -                         |
-| Go 1.24+, only stdlib + light libs | sqlx / chi / validator OK |
-| `go vet` and `go test -race` pass  | required                  |
-| Test coverage                      | ≥ 60%                     |
-| Dockerfile + docker-compose.yml    | bonus (+1)                |
-| README: how to run + curl examples | required                  |
-
-## How We Will Evaluate
-
-CI script (GitLab CI) will:
-
-- Run `go vet` and `go test -race -covermode=atomic`.
-- Launch both API and worker processes in the background.
-- Send one invalid and one valid POST request.
-- Fetch and validate the response from `/stats`.
+### Health Check
+```bash
+curl -X GET http://localhost:8080/healthz
+```

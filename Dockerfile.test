@@ -1,0 +1,10 @@
+# Dockerfile для тестирования
+FROM golang:1.24
+
+WORKDIR /app
+
+# Копирование исходного кода
+COPY . .
+
+# Запуск тестов
+CMD ["go", "test", "-v", "-race", "-covermode=atomic", "./..."]
