@@ -1,45 +1,46 @@
+
 # Go Broker Test
 
-This project is a Go-based application for managing trades and account statistics. It includes a server and worker component, along with a SQLite database for data storage.
+Этот проект — пример брокерского сервиса на Go для управления сделками и статистикой аккаунтов. Включает серверную часть и воркер, использует SQLite для хранения данных.
 
-## Features
-- **Trades Management**: Add and process trades.
-- **Account Statistics**: Fetch account statistics.
-- **Health Check**: Verify server health.
+## Возможности
+- **Управление сделками**: добавление и обработка сделок через REST API
+- **Статистика аккаунтов**: получение статистики по аккаунтам
+- **Проверка состояния**: endpoint для healthcheck
 
-## Prerequisites
-- Go 1.18 or later
+## Требования
+- Go 1.18 или новее
 - SQLite
 
-## Setup
+## Быстрый старт
 
-1. Clone the repository:
+1. Клонируйте репозиторий:
    ```bash
    git clone <repository-url>
    cd go-broker-test
    ```
 
-2. Install dependencies:
+2. Установите зависимости:
    ```bash
    go mod tidy
    ```
 
-3. Run the server:
+3. Запустите сервер:
    ```bash
    go run cmd/server/main.go
    ```
 
-4. Run the worker:
+4. Запустите воркер:
    ```bash
    go run cmd/worker/main.go
    ```
 
-## API Endpoints
+## API эндпоинты
 
-### 1. Add Trade
+### 1. Добавить сделку
 **POST** `/trades`
 
-**Request Body:**
+Тело запроса:
 ```json
 {
   "account": "ACC1",
@@ -51,15 +52,15 @@ This project is a Go-based application for managing trades and account statistic
 }
 ```
 
-**Response:**
-- `204 No Content` on success
-- `400 Bad Request` for invalid input
-- `500 Internal Server Error` for database errors
+Ответы:
+- `204 No Content` — успех
+- `400 Bad Request` — невалидный ввод
+- `500 Internal Server Error` — ошибка базы данных
 
-### 2. Fetch Account Statistics
+### 2. Получить статистику аккаунта
 **GET** `/stats/{account}`
 
-**Response:**
+Ответ:
 ```json
 {
   "account": "ACC1",
@@ -68,51 +69,107 @@ This project is a Go-based application for managing trades and account statistic
 }
 ```
 
-**Error Response:**
-- `400 Bad Request` if account is missing
-- `500 Internal Server Error` for database errors
+Ошибки:
+- `400 Bad Request` — не указан аккаунт
+- `500 Internal Server Error` — ошибка базы данных
 
-### 3. Health Check
+### 3. Проверка состояния
 **GET** `/healthz`
 
-**Response:**
-- `200 OK` if the server is healthy
-- `500 Internal Server Error` if the database connection fails
+Ответы:
+- `200 OK` — сервер работает
+- `500 Internal Server Error` — проблемы с базой данных
 
-## Testing
+## Тестирование
 
-Run all tests:
+Запуск всех тестов:
 ```bash
-make test
+go test ./...
 ```
 
-Generate a coverage report:
+Покрытие:
 ```bash
-make coverage
+go test ./... -cover
 ```
 
-## Example cURL Requests
+## Примеры cURL-запросов
 
-### Add a Trade
+### 1. Добавить сделку (валидный)
 ```bash
 curl -X POST http://localhost:8080/trades \
--H "Content-Type: application/json" \
--d '{
-  "account": "ACC1",
-  "symbol": "EURUSD",
-  "volume": 1.5,
-  "open": 1.2345,
-  "close": 1.2350,
-  "side": "buy"
-}'
+  -H "Content-Type: application/json" \
+  -d '{
+    "account": "ACC1",
+    "symbol": "EURUSD",
+    "volume": 1.5,
+    "open": 1.2345,
+    "close": 1.2350,
+    "side": "buy"
+  }'
+# Ожидается: 204 No Content
 ```
 
-### Fetch Account Statistics
+### 2. Добавить сделку (невалидный JSON)
+```bash
+curl -X POST http://localhost:8080/trades \
+  -H "Content-Type: application/json" \
+  -d '{invalid json}'
+# Ожидается: 400 Bad Request, тело: Invalid JSON payload
+```
+
+### 3. Добавить сделку (пустое поле account)
+```bash
+curl -X POST http://localhost:8080/trades \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account": "",
+    "symbol": "EURUSD",
+    "volume": 1.5,
+    "open": 1.2345,
+    "close": 1.2350,
+    "side": "buy"
+  }'
+# Ожидается: 400 Bad Request, тело: account must not be empty
+```
+
+### 4. Добавить сделку (неверный HTTP-метод)
+```bash
+curl -X GET http://localhost:8080/trades
+# Ожидается: 405 Method Not Allowed
+```
+
+### 5. Получить статистику (существующий аккаунт)
 ```bash
 curl -X GET http://localhost:8080/stats/ACC1
+# Ожидается: 200 OK, JSON с данными аккаунта
 ```
 
-### Health Check
+### 6. Получить статистику (несуществующий аккаунт)
+```bash
+curl -X GET http://localhost:8080/stats/UNKNOWN
+# Ожидается: 200 OK, JSON с нулевой статистикой
+```
+
+### 7. Получить статистику (без аккаунта)
+```bash
+curl -X GET http://localhost:8080/stats/
+# Ожидается: 400 Bad Request, тело: Account is required
+```
+
+### 8. Получить статистику (неверный HTTP-метод)
+```bash
+curl -X POST http://localhost:8080/stats/ACC1
+# Ожидается: 405 Method Not Allowed
+```
+
+### 9. Healthcheck (валидный)
 ```bash
 curl -X GET http://localhost:8080/healthz
+# Ожидается: 200 OK, тело: OK
+```
+
+### 10. Healthcheck (неверный HTTP-метод)
+```bash
+curl -X POST http://localhost:8080/healthz
+# Ожидается: 405 Method Not Allowed
 ```
